@@ -1,0 +1,42 @@
+{
+  "name": "sim2serve-microservices",
+  "version": "1.0.0",
+  "description": "Microservices backend for Twitter-like application with user authentication and tweet management",
+  "private": true,
+  "scripts": {
+    "build": "npm run build:user-service && npm run build:tweet-service",
+    "build:user-service": "cd apps/user-service && npm run build",
+    "build:tweet-service": "cd apps/tweet-service && npm run build",
+    "start": "docker-compose up",
+    "start:dev": "docker-compose -f docker-compose.dev.yml up",
+    "start:user-service": "cd apps/user-service && npm run start:dev",
+    "start:tweet-service": "cd apps/tweet-service && npm run start:dev",
+    "install:all": "cd apps/user-service && npm install && cd ../tweet-service && npm install",
+    "migration:run:user": "cd apps/user-service && npm run migration:run",
+    "migration:run:tweet": "cd apps/tweet-service && npm run migration:run",
+    "migration:run:all": "npm run migration:run:user && npm run migration:run:tweet",
+    "migration:revert:user": "cd apps/user-service && npm run migration:revert",
+    "migration:revert:tweet": "cd apps/tweet-service && npm run migration:revert",
+    "migration:status": "npm run migration:show:user && npm run migration:show:tweet",
+    "migration:show:user": "cd apps/user-service && npm run migration:show",
+    "migration:show:tweet": "cd apps/tweet-service && npm run migration:show",
+    "clean": "rm -rf node_modules apps/*/node_modules libs/*/node_modules",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  },
+  "keywords": [
+    "microservices",
+    "nestjs",
+    "postgresql",
+    "jwt",
+    "authentication",
+    "twitter",
+    "api"
+  ],
+  "author": "SIM2Serve",
+  "license": "MIT",
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}

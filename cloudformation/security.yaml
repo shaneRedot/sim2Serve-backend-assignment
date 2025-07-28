@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Security Groups for SIM2Serve application'
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+
+  VPC:
+    Description: Choose which VPC the security groups should be deployed to
+    Type: AWS::EC2::VPC::Id
+
+  AdminIPAddress:
+    Description: IP address for admin access to RDS (use 0.0.0.0/0 for open access during testing)
+    Type: String
+    Default: 0.0.0.0/0
+    AllowedPattern: ^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$
+    ConstraintDescription: Must be a valid IP address in CIDR format (e.g., 123.456.789.0/32 or 0.0.0.0/0 for open access)
+
+  EnablePublicDatabaseAccess:
+    Description: Enable public access to database for testing/demo purposes
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    ConstraintDescription: Choose true for testing/demo or false for production
+
+Conditions:
+  EnablePublicAccess: !Equals [!Ref EnablePublicDatabaseAccess, 'true']
+
+Resources:
+  # Security group for the load balancer
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-LoadBalancer-SG
+      GroupDescription: Access to the load balancer that sits in front of EKS
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-LoadBalancer-SG
+
+  # Security group for EKS cluster
+  EKSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-EKS-SG
+      GroupDescription: Security group for EKS cluster
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 3001
+          ToPort: 3001
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-EKS-SG
+
+  # Security group for RDS database
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-Database-SG
+      GroupDescription: Security group for RDS database
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref EKSSecurityGroup
+          Description: PostgreSQL access from EKS
+        - !If
+          - EnablePublicAccess
+          - IpProtocol: tcp
+            FromPort: 5432
+            ToPort: 5432
+            CidrIp: !Ref AdminIPAddress
+            Description: PostgreSQL access for admin/reviewers (testing only)
+          - !Ref AWS::NoValue
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-Database-SG
+
+  # Allow EKS nodes to communicate with each other
+  EKSNodeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-EKS-Node-SG
+      GroupDescription: Security group for EKS worker nodes
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-EKS-Node-SG
+
+  # Self-referencing rules for EKS nodes - Allow nodes to communicate with each other
+  EKSNodeSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow node to communicate with each other on all ports
+      GroupId: !Ref EKSNodeSecurityGroup
+      SourceSecurityGroupId: !Ref EKSNodeSecurityGroup
+      IpProtocol: '-1'
+
+  # EKS cluster to nodes communication
+  EKSNodeSecurityGroupFromEKSClusterIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow worker Kubelets and pods to receive communication from the cluster control plane
+      GroupId: !Ref EKSNodeSecurityGroup
+      SourceSecurityGroupId: !Ref EKSSecurityGroup
+      IpProtocol: tcp
+      FromPort: 1025
+      ToPort: 65535
+
+  EKSNodeSecurityGroupFromEKSClusterAPI:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow pods running extension API servers on port 443 to receive communication from cluster control plane
+      GroupId: !Ref EKSNodeSecurityGroup
+      SourceSecurityGroupId: !Ref EKSSecurityGroup
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+
+  # EKS nodes to cluster communication
+  EKSClusterSecurityGroupIngressNode:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow pods to communicate with the cluster API Server
+      GroupId: !Ref EKSSecurityGroup
+      SourceSecurityGroupId: !Ref EKSNodeSecurityGroup
+      IpProtocol: tcp
+      ToPort: 443
+      FromPort: 443
+
+Outputs:
+  LoadBalancerSecurityGroup:
+    Description: A reference to the security group for load balancers
+    Value: !Ref LoadBalancerSecurityGroup
+    Export:
+      Name: !Sub "${EnvironmentName}-LoadBalancer-SG"
+
+  EKSSecurityGroup:
+    Description: A reference to the security group for EKS cluster
+    Value: !Ref EKSSecurityGroup
+    Export:
+      Name: !Sub "${EnvironmentName}-EKS-SG"
+
+  EKSNodeSecurityGroup:
+    Description: A reference to the security group for EKS worker nodes
+    Value: !Ref EKSNodeSecurityGroup
+    Export:
+      Name: !Sub "${EnvironmentName}-EKS-Node-SG"
+
+  DatabaseSecurityGroup:
+    Description: A reference to the security group for RDS database
+    Value: !Ref DatabaseSecurityGroup
+    Export:
+      Name: !Sub "${EnvironmentName}-Database-SG"

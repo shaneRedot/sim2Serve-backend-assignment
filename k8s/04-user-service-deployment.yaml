@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: sim2serve
+  labels:
+    app: user-service
+    service: user-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+        service: user-service
+    spec:
+      containers:
+      - name: user-service
+        image: 203918881690.dkr.ecr.us-east-1.amazonaws.com/dev/user-service:latest
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: PORT
+          value: "3000"
+        - name: SWAGGER_SERVER
+          value: "http://af7a4a6a4d75c40acbb8c4acd0851573-41708628bda77979.elb.us-east-1.amazonaws.com"
+        envFrom:
+        - configMapRef:
+            name: sim2serve-config
+        - secretRef:
+            name: sim2serve-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+---

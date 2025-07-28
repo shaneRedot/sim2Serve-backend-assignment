@@ -1,0 +1,60 @@
+# Node.js Dependencies
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Environment files (sensitive data)
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker override files
+docker-compose.override.yml
+
+# AWS credentials and config
+.aws/
+
+# CloudFormation artifacts
+packaged-template.yaml
+
+# Kubernetes temporary files
+temp-k8s/
+k8s-temp/
+
+# Deployment artifacts
+artifacts/
+
+# Sensitive files
+*.pem
+*.key
+*.crt
+
+# Backup files
+*.backup
+*.bak
+
+# Keep example files
+!.env.example

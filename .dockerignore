@@ -1,0 +1,51 @@
+# Node.js files not needed in container
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Git and documentation
+.git/
+.gitignore
+README.md
+*.md
+
+# Environment files (will be injected at runtime)
+.env
+.env.*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+coverage/
+test/
+tests/
+*.test.ts
+*.spec.ts
+
+# Configuration files not needed in container
+eslint.config.*
+.prettierrc*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Other services and deployment files
+apps/user-service/
+apps/tweet-service/
+cloudformation/
+k8s/
+docker-compose.yml
+deploy*.sh
+deploy*.bat
+
+# Build artifacts (will be built in container)
+dist/
+build/
+
+# Logs
+*.log

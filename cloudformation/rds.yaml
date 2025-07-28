@@ -1,0 +1,127 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RDS PostgreSQL database for SIM2Serve application'
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+
+  VPC:
+    Description: Choose which VPC the database should be deployed to
+    Type: AWS::EC2::VPC::Id
+
+  PublicSubnet1:
+    Description: Choose which public subnet the database should be deployed to
+    Type: AWS::EC2::Subnet::Id
+
+  PublicSubnet2:
+    Description: Choose which public subnet the database should be deployed to
+    Type: AWS::EC2::Subnet::Id
+
+  DatabaseSecurityGroup:
+    Description: Security group for the database
+    Type: AWS::EC2::SecurityGroup::Id
+
+  DatabaseName:
+    Description: The name of the database
+    Type: String
+
+  DatabaseUsername:
+    Description: The username for the database
+    Type: String
+    NoEcho: true
+    MinLength: 1
+    MaxLength: 63
+    AllowedPattern: ^[a-zA-Z][a-zA-Z0-9_]*$
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters and underscores
+
+  DatabasePassword:
+    Description: The password for the database
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 128
+    AllowedPattern: ^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]*$
+    ConstraintDescription: Must be 8-128 characters and contain only alphanumeric characters and these special characters !@#$%^&*()_+-=[]{}|;':\"\\,.<>?/
+
+  DatabaseInstanceClass:
+    Description: The database instance type
+    Type: String
+    AllowedValues:
+      - db.t3.micro
+      - db.t3.small
+    ConstraintDescription: Must select a valid database instance type
+
+  DatabaseAllocatedStorage:
+    Description: The size of the database (Gb)
+    Type: Number
+    MinValue: 20
+    MaxValue: 1024
+    ConstraintDescription: Must be between 20 and 1024Gb
+
+  DatabasePort:
+    Description: The port for the database
+    Type: Number
+    Default: 5432
+    MinValue: 1150
+    MaxValue: 65535
+    ConstraintDescription: Must be a valid port number
+
+Resources:
+  # DB Subnet Group
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub ${EnvironmentName}-public-db-subnet-group
+      DBSubnetGroupDescription: Public subnet group for RDS database
+      SubnetIds:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-db-subnet-group
+
+  # RDS Instance
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      Engine: postgres
+      EngineVersion: '13.16'
+      MasterUsername: !Ref DatabaseUsername
+      MasterUserPassword: !Ref DatabasePassword
+      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      Port: !Ref DatabasePort
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      PubliclyAccessible: true
+      StorageType: gp2
+      DBName: !Ref DatabaseName
+      BackupRetentionPeriod: 7
+      MultiAZ: false
+      StorageEncrypted: true
+
+Outputs:
+  RDSEndpoint:
+    Description: "RDS Endpoint"
+    Value: !GetAtt Database.Endpoint.Address
+  
+  DatabaseEndpoint:
+    Description: RDS instance endpoint
+    Value: !GetAtt Database.Endpoint.Address
+    Export:
+      Name: !Sub "${EnvironmentName}-DatabaseEndpoint"
+
+  DatabasePort:
+    Description: RDS instance port
+    Value: !GetAtt Database.Endpoint.Port
+
+  DatabaseName:
+    Description: Database name
+    Value: !Ref DatabaseName
+
+  DatabaseInstanceIdentifier:
+    Description: RDS instance identifier
+    Value: !Ref Database

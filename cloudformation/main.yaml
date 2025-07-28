@@ -1,0 +1,188 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SIM2Serve Microservices - Main Stack'
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: dev
+
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.192.0.0/16
+
+  PublicSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    Default: 10.192.10.0/24
+
+  PublicSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 10.192.11.0/24
+
+  PrivateSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
+    Type: String
+    Default: 10.192.20.0/24
+
+  PrivateSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+    Type: String
+    Default: 10.192.21.0/24
+
+  DatabaseName:
+    Description: The name of the database
+    Type: String
+    Default: sim2serve_db
+
+  DatabaseUsername:
+    Description: The username for the database
+    Type: String
+    Default: postgres
+    NoEcho: true
+
+  DatabasePassword:
+    Description: The password for the database
+    Type: String
+    NoEcho: true
+
+  NodeInstanceType:
+    Description: EC2 instance type for the EKS worker nodes
+    Type: String
+    Default: t3.medium
+    AllowedValues:
+      - t3.small
+      - t3.medium
+
+  NodeGroupDesiredCapacity:
+    Description: Desired capacity of Node Group ASG
+    Type: Number
+    Default: 2
+
+  NodeGroupMaxSize:
+    Description: Maximum size of Node Group ASG
+    Type: Number
+    Default: 4
+
+  NodeGroupMinSize:
+    Description: Minimum size of Node Group ASG
+    Type: Number
+    Default: 1
+
+  DatabaseInstanceClass:
+    Description: The database instance type
+    Type: String
+    Default: db.t3.micro
+    AllowedValues:
+      - db.t3.micro
+      - db.t3.small
+
+  DatabaseAllocatedStorage:
+    Description: The size of the database (Gb)
+    Type: Number
+    Default: 20
+    MinValue: 20
+    MaxValue: 1024
+
+  DatabasePort:
+    Description: The port for the database
+    Type: Number
+    Default: 5432
+    MinValue: 1150
+    MaxValue: 65535
+
+Resources:
+  # VPC Stack
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://sim2serve-cloudformation.s3.us-east-1.amazonaws.com/vpc.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VpcCIDR: !Ref VpcCIDR
+        PublicSubnet1CIDR: !Ref PublicSubnet1CIDR
+        PublicSubnet2CIDR: !Ref PublicSubnet2CIDR
+        PrivateSubnet1CIDR: !Ref PrivateSubnet1CIDR
+        PrivateSubnet2CIDR: !Ref PrivateSubnet2CIDR
+
+  # Security Groups Stack
+  SecurityStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://sim2serve-cloudformation.s3.us-east-1.amazonaws.com/security.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VPC: !GetAtt VPCStack.Outputs.VPC
+
+  # RDS Stack
+  RDSStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://sim2serve-cloudformation.s3.us-east-1.amazonaws.com/rds.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VPC: !GetAtt VPCStack.Outputs.VPC
+        PublicSubnet1: !GetAtt VPCStack.Outputs.PublicSubnet1
+        PublicSubnet2: !GetAtt VPCStack.Outputs.PublicSubnet2
+        DatabaseSecurityGroup: !GetAtt SecurityStack.Outputs.DatabaseSecurityGroup
+        DatabaseName: !Ref DatabaseName
+        DatabaseUsername: !Ref DatabaseUsername
+        DatabasePassword: !Ref DatabasePassword
+        DatabaseInstanceClass: !Ref DatabaseInstanceClass
+        DatabaseAllocatedStorage: !Ref DatabaseAllocatedStorage
+        DatabasePort: !Ref DatabasePort
+
+  # ECR Stack
+  ECRStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://sim2serve-cloudformation.s3.us-east-1.amazonaws.com/ecr.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+
+  # EKS Stack
+  EKSStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://sim2serve-cloudformation.s3.us-east-1.amazonaws.com/eks.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VPC: !GetAtt VPCStack.Outputs.VPC
+        PrivateSubnet1: !GetAtt VPCStack.Outputs.PrivateSubnet1
+        PrivateSubnet2: !GetAtt VPCStack.Outputs.PrivateSubnet2
+        PublicSubnet1: !GetAtt VPCStack.Outputs.PublicSubnet1
+        PublicSubnet2: !GetAtt VPCStack.Outputs.PublicSubnet2
+        EKSSecurityGroup: !GetAtt SecurityStack.Outputs.EKSSecurityGroup
+        NodeInstanceType: !Ref NodeInstanceType
+        NodeGroupDesiredCapacity: !Ref NodeGroupDesiredCapacity
+
+        NodeGroupMaxSize: !Ref NodeGroupMaxSize
+        NodeGroupMinSize: !Ref NodeGroupMinSize
+
+Outputs:
+  EKSClusterName:
+    Description: "EKS Cluster Name"
+    Value:
+      Fn::GetAtt:
+        - EKSStack
+        - Outputs.EKSClusterName
+  UserServiceECR:
+    Description: "User Service ECR Repository URL"
+    Value:
+      Fn::GetAtt:
+        - ECRStack
+        - Outputs.UserServiceECR
+  TweetServiceECR:
+    Description: "Tweet Service ECR Repository URL"
+    Value:
+      Fn::GetAtt:
+        - ECRStack
+        - Outputs.TweetServiceECR
+  RDSEndpoint:
+    Description: "RDS Endpoint"
+    Value:
+      Fn::GetAtt:
+        - RDSStack
+        - Outputs.RDSEndpoint

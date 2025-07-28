@@ -1,0 +1,46 @@
+services:
+  user-service:
+    image: node:18-alpine
+    container_name: user-service
+    working_dir: /app
+    command: sh -c "echo 'Starting user service...' && npm install && echo 'npm install complete' && npm install -g typescript && echo 'TypeScript installed globally' && echo 'Running migrations...' && node run-migrations.js && echo 'Migrations completed, starting app...' && npx ts-node --version && echo 'Checking TypeScript compilation...' && npx tsc --noEmit && echo 'TypeScript check passed' && echo 'Starting NestJS app...' && npx ts-node src/main.ts"
+    volumes:
+      - ./apps/user-service:/app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      # AWS RDS Configuration - Update these with your actual RDS details
+      - DATABASE_HOST=${DATABASE_HOST:-your-rds-endpoint.amazonaws.com}
+      - DATABASE_PORT=${DATABASE_PORT:-5432}
+      - DATABASE_USERNAME=${DATABASE_USERNAME:-your-username}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-your-password}
+      - DATABASE_NAME=${DATABASE_NAME:-sim2serve_db}
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+
+  tweet-service:
+    image: node:18-alpine
+    container_name: tweet-service
+    working_dir: /app
+    command: sh -c "echo 'Starting tweet service...' && npm install && echo 'npm install complete' && npm install -g typescript && echo 'TypeScript installed globally' && echo 'Running migrations...' && node run-migrations.js && echo 'Migrations completed, starting app...' && echo 'Starting ts-node...' && npx ts-node --version && npx ts-node src/main.ts"
+    volumes:
+      - ./apps/tweet-service:/app
+    ports:
+      - "3001:3001"
+    depends_on:
+      - user-service
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      # AWS RDS Configuration - Update these with your actual RDS details
+      - DATABASE_HOST=${DATABASE_HOST:-your-rds-endpoint.amazonaws.com}
+      - DATABASE_PORT=${DATABASE_PORT:-5432}
+      - DATABASE_USERNAME=${DATABASE_USERNAME:-your-username}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-your-password}
+      - DATABASE_NAME=${DATABASE_NAME:-sim2serve_db}
+      - USER_SERVICE_URL=http://user-service:3000
+
+networks:
+  default:
+    name: sim2serve-network
