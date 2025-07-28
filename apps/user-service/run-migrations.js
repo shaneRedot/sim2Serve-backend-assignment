@@ -29,6 +29,7 @@ async function waitForDatabase() {
 
 async function runMigrations() {
   console.log('🔄 Running user-service migrations...');
+  console.log('⏳ Please wait while database migrations are running...');
   
   return new Promise((resolve, reject) => {
     const command = 'npm run migration:run';

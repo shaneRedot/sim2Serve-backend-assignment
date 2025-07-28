@@ -7,6 +7,7 @@ import compression from 'compression';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
+  console.log('⏳ Please wait while the application is starting...');
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Security and performance middleware
