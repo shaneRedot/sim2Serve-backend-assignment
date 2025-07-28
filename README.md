@@ -2,6 +2,12 @@
 
 A scalable microservices backend application for a Twitter-like platform built with NestJS, TypeORM, PostgreSQL, and deployed on AWS using CloudFormation.
 
+# AWS Resources & Automation . 
+# All AWS resources are provisioned using CloudFormation templates, organized in subfolders within the application.
+
+cloudformation/ – Infrastructure automation for RDS and related resources. Deploying main.yaml orchestrates the creation of all resources in the correct order for a seamless setup.
+k8s/ – Kubernetes deployment manifests for application workloads.
+
 ## 🏗️ Architecture
 
 This project implements a clean microservices architecture with separation of concerns:
