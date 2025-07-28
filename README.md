@@ -67,38 +67,96 @@ USER_SERVICE_PORT=3000
 TWEET_SERVICE_PORT=3001
 ```
 
+
 ## How to Run Locally
 
-1. Clone the repo:
+1. **Clone the repo:**
    ```bash
    git clone <your-repo-url>
    cd SIM2Serve-user-authentication
    ```
 
-2. Install dependencies:
-   npm run install:all will install the dependencies for both tweet and user services
+2. **Install dependencies:**
+   ```bash
+   npm run install:all
+   ```
+   Or service-wise:
+   ```bash
+   cd apps/user-service && npm install
+   cd ../tweet-service && npm install
+   ```
 
-3. Service wise installation
-   # For user-service
-   cd apps/user-service
-   npm install
+3. **Create a `.env` file in the root** (see `.env.example` for reference):
 
-   # For tweet-service
-   cd ../tweet-service
-   npm install
+   **Required Environment Variables:**
+   ```env
+   # Database
+   DATABASE_HOST=your-rds-endpoint
+   DATABASE_PORT=5432
+   DATABASE_USERNAME=sim2serve_db
+   DATABASE_PASSWORD=SecurePassword123
+   DATABASE_NAME=sim2serve_db
 
-3. Create a `.env` file in the root (see `.env.example` for reference):
+   use below values for the rds config to access the aws host rds access
 
-4. Start everything with Docker Compose:
+   DATABASE_HOST=sim2serve-stack-rdsstack-11qgwr6e2fkcu-database-hdidifeusao6.cknyyc82yqf8.us-east-1.rds.amazonaws.com
+  DATABASE_PORT=5432
+  DATABASE_USERNAME=sim2serve_db
+  DATABASE_PASSWORD=SecurePassword123
+  DATABASE_NAME=sim2serve_db
+
+   # JWT
+   JWT_SECRET=your-super-secure-jwt-secret
+   JWT_EXPIRES_IN=24h
+
+   # Application Ports
+   USER_SERVICE_PORT=3000
+   TWEET_SERVICE_PORT=3001
+   ```
+
+4. **Start everything with Docker Compose:**
    ```bash
    docker-compose up --build
    ```
-   This will automatically run the migrations with the given databse configuration
+   _This will automatically run migrations with the given database configuration._
 
-5. Access the services:
+5. **Access the services:**
    - User Service: http://localhost:3000
    - Tweet Service: http://localhost:3001
    - Swagger Docs: http://localhost:3000/api/docs and http://localhost:3001/api/docs
+
+---
+
+## 🧪 Step-by-Step Endpoint Testing Guide
+
+**1. Check Service Health**
+   - User Service: `GET /health` (http://localhost:3000/health)
+   - Tweet Service: `GET /health` (http://localhost:3001/health)
+
+**2. Register a New User**
+   - `POST /api/auth/register` (http://localhost:3000/api/auth/register)
+   - Body: `{ "username": "yourname", "password": "yourpassword" }`
+
+**3. Login**
+   - `POST /api/auth/login` (http://localhost:3000/api/auth/login)
+   - Body: `{ "username": "yourname", "password": "yourpassword" }`
+   - _Save the JWT token from the response for protected endpoints._
+
+**4. Test User Endpoints (with JWT)**
+   - `GET /api/users` (http://localhost:3000/api/users)
+   - `GET /api/users/:id` (http://localhost:3000/api/users/1)
+   - `GET /api/auth/profile` (http://localhost:3000/api/auth/profile)
+
+**5. Test Tweet Endpoints (with JWT)**
+   - `POST /api/tweets` (http://localhost:3001/api/tweets)
+   - `GET /api/tweets` (http://localhost:3001/api/tweets)
+   - `GET /api/tweets/:id` (http://localhost:3001/api/tweets/1)
+   - `GET /api/tweets/user/:userId` (http://localhost:3001/api/tweets/user/1)
+
+---
+**Tip:** Use Swagger UI for interactive API testing:
+   - http://localhost:3000/api/docs
+   - http://localhost:3001/api/docs
 
 ## 📋 API Documentation
 
