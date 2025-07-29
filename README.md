@@ -127,9 +127,9 @@ TWEET_SERVICE_PORT=3001
    _This will automatically run migrations with the given database configuration._
 
 5. **Access the services:**
-   - User Service: http://localhost:3000
-   - Tweet Service: http://localhost:3001
-   - Swagger Docs: http://localhost:3000/api/docs and http://localhost:3001/api/docs
+   - User Service (Ingress): http://af7a4a6a4d75c40acbb8c4acd0851573-41708628bda77979.elb.us-east-1.amazonaws.com/
+   - User Service Health: http://af7a4a6a4d75c40acbb8c4acd0851573-41708628bda77979.elb.us-east-1.amazonaws.com/health
+   Other URL's to be updated.
 
 ---
 
